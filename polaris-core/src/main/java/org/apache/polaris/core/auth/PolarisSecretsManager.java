@@ -45,6 +45,8 @@ public interface PolarisSecretsManager {
    *     password. if the principal's secret is already a one-time password, this flag is
    *     automatically true
    * @param oldSecretHash main secret hash for the principal
+   * @param customClientId
+   * @param customClientSecret
    * @return the secrets associated to that principal amd the id of the principal
    */
   @Nonnull
@@ -53,5 +55,7 @@ public interface PolarisSecretsManager {
       @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash);
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret);
 }

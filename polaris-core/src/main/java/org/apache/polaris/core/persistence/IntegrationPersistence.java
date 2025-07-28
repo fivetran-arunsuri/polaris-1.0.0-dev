@@ -81,6 +81,16 @@ public interface IntegrationPersistence {
       boolean reset,
       @Nonnull String oldSecretHash);
 
+  @Nullable
+  PolarisPrincipalSecrets resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret);
+
   /**
    * When dropping a principal, we also need to drop the secrets of that principal
    *

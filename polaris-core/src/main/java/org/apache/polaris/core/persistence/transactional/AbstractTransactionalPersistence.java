@@ -505,6 +505,23 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
                 callCtx, clientId, principalId, reset, oldSecretHash));
   }
 
+  @Override
+  public PolarisPrincipalSecrets resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret) {
+    return runInTransaction(
+        callCtx,
+        () ->
+            this.rotatePrincipalSecretsInCurrentTxn(
+                callCtx, clientId, principalId, reset, oldSecretHash));
+  }
+  ;
+
   /** {@inheritDoc} */
   @Override
   public void deletePrincipalSecrets(

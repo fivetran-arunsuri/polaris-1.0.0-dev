@@ -930,7 +930,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @Nonnull String oldSecretHash) {
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret) {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
