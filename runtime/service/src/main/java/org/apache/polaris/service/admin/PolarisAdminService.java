@@ -20,12 +20,10 @@ package org.apache.polaris.service.admin;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootPrincipalName;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
