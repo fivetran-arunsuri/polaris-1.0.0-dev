@@ -244,11 +244,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
 
     if (op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS)) {
-      boolean isRoot =
-          getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
-      if (!isRoot) {
-        throw new ForbiddenException("Only root principal can reset credentials");
-      }
+      authorizer.authorizeOrThrow(authenticatedPrincipal);
       LOGGER
           .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
