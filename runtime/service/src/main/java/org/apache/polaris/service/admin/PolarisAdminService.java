@@ -285,15 +285,6 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
 
-    if (op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS)) {
-      authorizer.authorizeOrThrow(authenticatedPrincipal);
-      LOGGER
-          .atDebug()
-          .addKeyValue("principalName", topLevelEntityName)
-          .log("Root principal allowed to reset credentials");
-      return;
-    }
-
     // TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should
     // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
     if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
@@ -1155,7 +1146,7 @@ public class PolarisAdminService {
   }
 
   private @Nonnull PrincipalWithCredentials resetCredentialsHelper(
-      String principalName, boolean shouldReset, String customClientId, String customClientSecret) {
+      String principalName, String customClientId, String customClientSecret) {
     PrincipalEntity currentPrincipalEntity =
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
@@ -1178,7 +1169,6 @@ public class PolarisAdminService {
                 getCurrentPolarisContext(),
                 currentPrincipalEntity.getClientId(),
                 currentPrincipalEntity.getId(),
-                shouldReset,
                 currentSecrets.getMainSecretHash(),
                 customClientId,
                 customClientSecret)
@@ -1231,7 +1221,7 @@ public class PolarisAdminService {
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
     var customClientId = resetPrincipalRequest.getClientId();
     var customClientSecret = resetPrincipalRequest.getClientSecret();
-    return resetCredentialsHelper(principalName, true, customClientId, customClientSecret);
+    return resetCredentialsHelper(principalName, customClientId, customClientSecret);
   }
 
   public List<Principal> listPrincipals() {

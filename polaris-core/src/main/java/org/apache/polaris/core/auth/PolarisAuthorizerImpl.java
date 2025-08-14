@@ -583,6 +583,10 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             .getRealmConfig()
             .getConfig(
                 FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+
+    boolean isRoot =
+        getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
+
     if (enforceCredentialRotationRequiredState
         && authenticatedPrincipal
             .getPrincipalEntity()
@@ -600,17 +604,16 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           authenticatedPrincipal.getActivatedPrincipalRoleNames(),
           activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
           authzOp);
-    }
-  }
-
-  @Override
-  public void authorizeOrThrow(@Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal) {
-    boolean isRoot =
-        getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
-    if (!isRoot) {
-      throw new ForbiddenException(
-          "Only %s principal can reset credentials",
-          authenticatedPrincipal.getPrincipalEntity().getName());
+    } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+      if (!isRoot) {
+        throw new ForbiddenException(
+            "Only %s principal can reset credentials",
+            authenticatedPrincipal.getPrincipalEntity().getName());
+      }
+      LOGGER
+          .atDebug()
+          .addKeyValue("principalName", authenticatedPrincipal.getPrincipalEntity().getName())
+          .log("Root principal allowed to reset credentials");
     }
   }
 
