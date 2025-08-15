@@ -599,8 +599,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {
         throw new ForbiddenException(
-            "Only %s principal can reset credentials",
-            authenticatedPrincipal.getPrincipalEntity().getName());
+            "Only Root principal(service-admin) can reset credentials for op %s", authzOp);
       }
       LOGGER
           .atDebug()
