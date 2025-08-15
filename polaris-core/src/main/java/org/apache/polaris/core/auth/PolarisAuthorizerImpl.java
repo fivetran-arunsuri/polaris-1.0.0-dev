@@ -596,14 +596,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       throw new ForbiddenException(
           "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
           authenticatedPrincipal.getName(), authzOp);
-    } else if (!isAuthorized(
-        authenticatedPrincipal, activatedEntities, authzOp, targets, secondaries)) {
-      throw new ForbiddenException(
-          "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
-          authenticatedPrincipal.getName(),
-          authenticatedPrincipal.getActivatedPrincipalRoleNames(),
-          activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
-          authzOp);
     } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
       if (!isRoot) {
         throw new ForbiddenException(
@@ -614,6 +606,14 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           .atDebug()
           .addKeyValue("principalName", authenticatedPrincipal.getPrincipalEntity().getName())
           .log("Root principal allowed to reset credentials");
+    } else if (!isAuthorized(
+        authenticatedPrincipal, activatedEntities, authzOp, targets, secondaries)) {
+      throw new ForbiddenException(
+          "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
+          authenticatedPrincipal.getName(),
+          authenticatedPrincipal.getActivatedPrincipalRoleNames(),
+          activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
+          authzOp);
     }
   }
 
