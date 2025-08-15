@@ -55,6 +55,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -66,7 +67,9 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -199,6 +202,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
+  protected RealmConfig realmConfig;
   protected AuthenticatedPolarisPrincipal authenticatedRoot;
   protected PolarisAuthorizer polarisAuthorizer;
 
@@ -224,8 +228,6 @@ public abstract class PolarisAuthzTestBase {
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
-    polarisAuthorizer = new PolarisAuthorizerImpl();
-
     polarisContext =
         new PolarisCallContext(
             realmContext,
@@ -234,6 +236,9 @@ public abstract class PolarisAuthzTestBase {
             configurationStore);
 
     callContext = polarisContext;
+    realmConfig = polarisContext.getRealmConfig();
+
+    polarisAuthorizer = new PolarisAuthorizerImpl(polarisContext.getRealmConfig());
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -262,7 +267,7 @@ public abstract class PolarisAuthzTestBase {
                     .setName(CATALOG_NAME)
                     .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(callContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
@@ -288,15 +293,21 @@ public abstract class PolarisAuthzTestBase {
     adminService.createCatalogRole(
         CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE_SHARED).build());
 
-    adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1);
-    adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2);
+    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1));
+    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2));
 
-    adminService.assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1);
-    adminService.assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2);
-    adminService.assignCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED);
-    adminService.assignCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED);
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED));
 
     // Do some shared setup with non-authz-aware baseCatalog.
     baseCatalog.createNamespace(NS1);
@@ -366,6 +377,10 @@ public abstract class PolarisAuthzTestBase {
     } finally {
       metaStoreManager.purge(polarisContext);
     }
+  }
+
+  protected static void assertSuccess(BaseResult result) {
+    Assertions.assertThat(result.isSuccess()).isTrue();
   }
 
   protected @Nonnull SecurityContext securityContext(
@@ -522,12 +537,12 @@ public abstract class PolarisAuthzTestBase {
       Runnable action,
       Runnable cleanupAction,
       String principalName,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     for (Set<PolarisPrivilege> privilegeSet : sufficientPrivileges) {
       for (PolarisPrivilege privilege : privilegeSet) {
         // Grant the single privilege at a catalog level to cascade to all objects.
-        Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+        assertSuccess(grantAction.apply(privilege));
       }
 
       // Should run without issues.
@@ -556,7 +571,7 @@ public abstract class PolarisAuthzTestBase {
         // Knockout testing - Revoke single privileges and the same action should throw
         // NotAuthorizedException.
         for (PolarisPrivilege privilege : privilegeSet) {
-          Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
+          assertSuccess(revokeAction.apply(privilege));
 
           try {
             Assertions.assertThatThrownBy(() -> action.run())
@@ -572,13 +587,13 @@ public abstract class PolarisAuthzTestBase {
           }
 
           // Grant the single privilege at a catalog level to cascade to all objects.
-          Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+          assertSuccess(grantAction.apply(privilege));
         }
       }
 
       // Now remove all the privileges
       for (PolarisPrivilege privilege : privilegeSet) {
-        Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
+        assertSuccess(revokeAction.apply(privilege));
       }
       try {
         Assertions.assertThatThrownBy(() -> action.run())
@@ -602,10 +617,10 @@ public abstract class PolarisAuthzTestBase {
       List<PolarisPrivilege> insufficientPrivileges,
       String principalName,
       Runnable action,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     doTestInsufficientPrivilegeSets(
-        insufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
+        insufficientPrivileges.stream().map(Set::of).toList(),
         principalName,
         action,
         grantAction,
@@ -620,16 +635,16 @@ public abstract class PolarisAuthzTestBase {
       List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
       String principalName,
       Runnable action,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     for (Set<PolarisPrivilege> privilegeSet : insufficientPrivilegeSets) {
       for (PolarisPrivilege privilege : privilegeSet) {
         // Grant the single privilege at a catalog level to cascade to all objects.
-        Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+        assertSuccess(grantAction.apply(privilege));
 
         // Should be insufficient
         try {
-          Assertions.assertThatThrownBy(() -> action.run())
+          Assertions.assertThatThrownBy(action::run)
               .isInstanceOf(ForbiddenException.class)
               .hasMessageContaining(principalName)
               .hasMessageContaining("is not authorized");
@@ -640,7 +655,7 @@ public abstract class PolarisAuthzTestBase {
 
         // Revoking only matters in case there are some multi-privilege actions being tested with
         // only granting individual privileges in isolation.
-        Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
+        assertSuccess(revokeAction.apply(privilege));
       }
     }
   }
