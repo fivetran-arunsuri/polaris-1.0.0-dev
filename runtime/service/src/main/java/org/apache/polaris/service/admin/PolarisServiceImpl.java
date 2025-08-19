@@ -168,15 +168,15 @@ public class PolarisServiceImpl
     return Response.status(Response.Status.CREATED).build();
   }
 
-  private void validateResetClientId(String clientId) {
+  private void validateClientId(String clientId) {
     if (!clientId.matches("^[0-9a-f]{16}$")) {
-      throw new IllegalArgumentException("Invalid resetClientId format");
+      throw new IllegalArgumentException("Invalid clientId format");
     }
   }
 
-  private void validateResetClientSecret(String clientSecret) {
+  private void validateClientSecret(String clientSecret) {
     if (!clientSecret.matches("^[0-9a-f]{32}$")) {
-      throw new IllegalArgumentException("Invalid resetClientSecret format");
+      throw new IllegalArgumentException("Invalid clientSecret format");
     }
   }
 
@@ -311,10 +311,10 @@ public class PolarisServiceImpl
             : new ResetPrincipalRequest(null, null);
 
     if (safeResetPrincipalRequest.getClientId() != null) {
-      validateResetClientId(safeResetPrincipalRequest.getClientId());
+      validateClientId(safeResetPrincipalRequest.getClientId());
     }
     if (safeResetPrincipalRequest.getClientSecret() != null) {
-      validateResetClientSecret(safeResetPrincipalRequest.getClientSecret());
+      validateClientSecret(safeResetPrincipalRequest.getClientSecret());
     }
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.resetCredentials(principalName, safeResetPrincipalRequest))
